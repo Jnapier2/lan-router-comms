@@ -1,0 +1,19 @@
+name: PowerShell static checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  safety:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Parse source and enforce security invariants
+        shell: powershell
+        run: .\tests\Test-PublicSafety.ps1
