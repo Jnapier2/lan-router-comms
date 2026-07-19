@@ -4,6 +4,8 @@
 
 LAN Router Comms provides a direct, cloud-free path for authenticated text and resumable file exchange between two managed Windows computers on a trusted private network. It supports local continuity and data-control needs without adding a cloud relay, port forwarding, remote shell, background service, scheduled task, or startup persistence.
 
+Durable queues and hash receipts make delivery a state-reconciliation problem rather than a blind resend: after an interruption, peers can continue from authenticated, recorded progress and retain duplicate-safe completion evidence.
+
 ## Protocol and safeguards
 
 - OS-negotiated TLS with a strict TLS 1.2 floor.
@@ -63,6 +65,8 @@ The archive excludes message and file contents, pairing secrets, and raw identit
 ## Runtime data
 
 On first use, the program creates local configuration and state. Real settings, identities, peers, invitations, messages, files, logs, diagnostics, and exports are ignored by Git. `config/settings.example.json` contains only non-secret defaults.
+
+That versioned settings contract centralizes the port, message and file limits, timeouts, session quotas, retry behavior, retention windows, and free-space reserve.
 
 Received files are authenticated and hash-verified in transit but remain ordinary files after delivery. Scan them before opening.
 
