@@ -4,7 +4,7 @@
 
 LAN Router Comms is a foreground Windows utility for authenticated text and resumable file delivery between paired computers on the same trusted private LAN. It uses no cloud relay, port forwarding, remote shell, background service, scheduled task, or startup persistence.
 
-## Engineering highlights
+## Protocol and safeguards
 
 - OS-negotiated TLS with a strict TLS 1.2 floor.
 - Exact SHA-256 certificate pinning, peer-name validation, validity checks, and an RSA 2048-bit minimum.
