@@ -2,7 +2,7 @@
 
 [![PowerShell checks](https://github.com/Jnapier2/lan-router-comms/actions/workflows/powershell-static.yml/badge.svg)](https://github.com/Jnapier2/lan-router-comms/actions/workflows/powershell-static.yml)
 
-LAN Router Comms is a foreground Windows utility for authenticated text and resumable file delivery between paired computers on the same trusted private LAN. It uses no cloud relay, port forwarding, remote shell, background service, scheduled task, or startup persistence.
+LAN Router Comms provides a direct, cloud-free path for authenticated text and resumable file exchange between two managed Windows computers on a trusted private network. It supports local continuity and data-control needs without adding a cloud relay, port forwarding, remote shell, background service, scheduled task, or startup persistence.
 
 ## Protocol and safeguards
 
