@@ -4,6 +4,7 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
+Add-Type -AssemblyName System.Security -ErrorAction Stop
 
 function Assert-True {
     param([bool]$Condition, [string]$Message)
@@ -20,7 +21,7 @@ foreach ($file in $files) {
 
 $corePath = Join-Path $repo 'LAN_Router_Comms.ps1'
 $core = Get-Content -LiteralPath $corePath -Raw
-Assert-True ($core -notmatch '(?i)ExecutionPolicy\s+Bypass') 'The public source must not bypass execution policy.'
+Assert-True ($core -notmatch '(?i)ExecutionPolicy\s+Bypass') 'The application source must not bypass execution policy.'
 Assert-True ($core -match '\$script:MinimumTlsProtocolValue\s*=\s*3072') 'TLS 1.2 minimum must remain enforced.'
 Assert-True ($core -match 'HMACSHA256') 'Per-peer HMAC authentication is required.'
 Assert-True ($core -match 'DataProtectionScope\]::CurrentUser') 'DPAPI CurrentUser protection is required.'
@@ -32,10 +33,10 @@ Assert-True ($core -match "'FirewallRemove'\s*\{ Remove-ScopedFirewallRule") 'A 
 Assert-True ($core -match '\$script:MaxTransferBytes\s*=\s*10GB') 'File transfers must retain the practical 10 GiB ceiling.'
 Assert-True (([regex]::Matches($core,'-gt\s+\$script:MaxTransferBytes')).Count -ge 2) 'Incoming and outgoing file paths must both enforce the transfer ceiling.'
 Assert-True ($core -match 'ValidateRange\(0,10737418240\)') 'Incoming capacity validation must not accept values above 10 GiB.'
-Assert-True ($core -match "'SupportExport'") 'The public support-export mode is required.'
+Assert-True ($core -match "'SupportExport'") 'The support-export mode is required.'
 Assert-True ($core -match "sensitivity='support-redacted'") 'Generated support metadata must be labeled support-redacted.'
 
-$stalePublicTerms = @(
+$stalePackageTerms = @(
     'Export20',
     'Norton',
     ('project-' + 'internal'),
@@ -46,8 +47,8 @@ $stalePublicTerms = @(
     'README_START_HERE.md',
     'VERSION.txt'
 )
-foreach ($term in $stalePublicTerms) {
-    Assert-True ($core -notmatch [regex]::Escape($term)) ("Stale package-specific term remains in public source: $term")
+foreach ($term in $stalePackageTerms) {
+    Assert-True ($core -notmatch [regex]::Escape($term)) ("Stale package-specific term remains in application source: $term")
 }
 
 $tokens = $null
@@ -57,6 +58,44 @@ $commands = @($ast.FindAll({ param($node) $node -is [System.Management.Automatio
 $forbidden = @('New-Service','Set-Service','Register-ScheduledTask','New-ScheduledTask','Disable-NetFirewallRule','Set-NetFirewallProfile','Add-MpPreference','Set-MpPreference')
 foreach ($name in $forbidden) {
     Assert-True ($name -notin $commands) ("Forbidden persistence or security-control command found: $name")
+}
+
+$certificateFactoryAst = $ast.Find({
+    param($node)
+    $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'New-IdentityCertificateBytes'
+}, $true)
+Assert-True ($null -ne $certificateFactoryAst) 'New-IdentityCertificateBytes was not found.'
+$certificateFactoryText = $certificateFactoryAst.Extent.Text
+Assert-True ($certificateFactoryText -match '\[Security\.Cryptography\.RSACng\]::new\(3072\)') 'Certificate generation must use an in-memory 3072-bit RSACng key.'
+Assert-True ($certificateFactoryText -notmatch 'New-SelfSignedCertificate|Cert:\\CurrentUser') 'Certificate generation must not write through the CurrentUser certificate store.'
+Invoke-Expression $certificateFactoryText
+
+$certificatePeerId = [guid]::NewGuid().ToString('D')
+$certificatePassword = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes('LAN Router Comms certificate validation'))
+$certificateBytes = New-IdentityCertificateBytes -PeerId $certificatePeerId -Password $certificatePassword
+Assert-True ($certificateBytes.Length -gt 512) 'Certificate generation returned an unexpectedly small PFX payload.'
+$certificateFlags = [Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable
+if ([Enum]::GetNames([Security.Cryptography.X509Certificates.X509KeyStorageFlags]) -contains 'EphemeralKeySet') {
+    $certificateFlags = $certificateFlags -bor [Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet
+}
+$generatedCertificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new($certificateBytes, $certificatePassword, $certificateFlags)
+try {
+    Assert-True $generatedCertificate.HasPrivateKey 'Generated certificate must retain its private key.'
+    Assert-True ([string]::Equals(
+        $generatedCertificate.GetNameInfo([Security.Cryptography.X509Certificates.X509NameType]::SimpleName, $false),
+        "LAN-Link-$certificatePeerId",
+        [StringComparison]::OrdinalIgnoreCase
+    )) 'Generated certificate subject does not match the requested peer ID.'
+    Assert-True ([string]$generatedCertificate.PublicKey.Oid.Value -eq '1.2.840.113549.1.1.1') 'Generated certificate must use RSA.'
+    $generatedRsa = [Security.Cryptography.X509Certificates.RSACertificateExtensions]::GetRSAPrivateKey($generatedCertificate)
+    try {
+        Assert-True ($null -ne $generatedRsa) 'Generated certificate private key could not be opened.'
+        Assert-True ($generatedRsa.KeySize -eq 3072) 'Generated certificate must retain a 3072-bit RSA key.'
+    } finally {
+        if ($null -ne $generatedRsa) { $generatedRsa.Dispose() }
+    }
+} finally {
+    $generatedCertificate.Dispose()
 }
 
 $addFirewallAst = $ast.Find({

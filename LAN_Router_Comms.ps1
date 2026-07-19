@@ -5,8 +5,7 @@ Prime directive: deliver authenticated text and files between paired Windows PCs
 on the same private router network, without cloud services, remote command execution,
 hidden persistence, or firewall bypasses.
 
-Public portfolio edition. Runtime state and support exports remain local and are
-excluded from source control.
+Runtime state and support exports remain local and are excluded from source control.
 #>
 [CmdletBinding()]
 param(
@@ -712,48 +711,30 @@ function Get-CertificateInfoFromDer {
 
 function New-IdentityCertificateBytes {
     param([string]$PeerId, [string]$Password)
+    $rsa = [Security.Cryptography.RSACng]::new(3072)
     try {
-        $rsa = [Security.Cryptography.RSA]::Create()
-        $rsa.KeySize = 3072
+        $dn = [Security.Cryptography.X509Certificates.X500DistinguishedName]::new("CN=LAN-Link-$PeerId")
+        $req = [Security.Cryptography.X509Certificates.CertificateRequest]::new(
+            $dn,
+            $rsa,
+            [Security.Cryptography.HashAlgorithmName]::SHA256,
+            [Security.Cryptography.RSASignaturePadding]::Pkcs1
+        )
+        $req.CertificateExtensions.Add([Security.Cryptography.X509Certificates.X509BasicConstraintsExtension]::new($false,$false,0,$true))
+        $req.CertificateExtensions.Add([Security.Cryptography.X509Certificates.X509KeyUsageExtension]::new(
+            [Security.Cryptography.X509Certificates.X509KeyUsageFlags]::DigitalSignature,
+            $true
+        ))
+        $oids = [Security.Cryptography.OidCollection]::new()
+        [void]$oids.Add([Security.Cryptography.Oid]::new('1.3.6.1.5.5.7.3.1','Server Authentication'))
+        [void]$oids.Add([Security.Cryptography.Oid]::new('1.3.6.1.5.5.7.3.2','Client Authentication'))
+        $req.CertificateExtensions.Add([Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension]::new($oids,$false))
+        $cert = $req.CreateSelfSigned([DateTimeOffset]::UtcNow.AddMinutes(-5), [DateTimeOffset]::UtcNow.AddYears(5))
         try {
-            $dn = [Security.Cryptography.X509Certificates.X500DistinguishedName]::new("CN=LAN-Link-$PeerId")
-            $req = [Security.Cryptography.X509Certificates.CertificateRequest]::new(
-                $dn,
-                $rsa,
-                [Security.Cryptography.HashAlgorithmName]::SHA256,
-                [Security.Cryptography.RSASignaturePadding]::Pkcs1
-            )
-            $req.CertificateExtensions.Add([Security.Cryptography.X509Certificates.X509BasicConstraintsExtension]::new($false,$false,0,$true))
-            $req.CertificateExtensions.Add([Security.Cryptography.X509Certificates.X509KeyUsageExtension]::new(
-                [Security.Cryptography.X509Certificates.X509KeyUsageFlags]::DigitalSignature,
-                $true
-            ))
-            $oids = [Security.Cryptography.OidCollection]::new()
-            [void]$oids.Add([Security.Cryptography.Oid]::new('1.3.6.1.5.5.7.3.1','Server Authentication'))
-            [void]$oids.Add([Security.Cryptography.Oid]::new('1.3.6.1.5.5.7.3.2','Client Authentication'))
-            $req.CertificateExtensions.Add([Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension]::new($oids,$false))
-            $cert = $req.CreateSelfSigned([DateTimeOffset]::UtcNow.AddMinutes(-5), [DateTimeOffset]::UtcNow.AddYears(5))
-            try {
-                $pfx = $cert.Export([Security.Cryptography.X509Certificates.X509ContentType]::Pfx, $Password)
-                return ,$pfx
-            } finally { $cert.Dispose() }
-        } finally { $rsa.Dispose() }
-    } catch {
-        Write-AppLog -Level WARN -Message ('CertificateRequest path unavailable; using CurrentUser certificate cmdlets. ' + $_.Exception.Message)
-        $subject = "CN=LAN-Link-$PeerId"
-        $cert = New-SelfSignedCertificate -Subject $subject -CertStoreLocation 'Cert:\CurrentUser\My' `
-            -KeyAlgorithm RSA -KeyLength 3072 -HashAlgorithm SHA256 -KeyExportPolicy Exportable `
-            -KeyUsage DigitalSignature -NotAfter ([DateTime]::UtcNow.AddYears(5)) `
-            -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.1&1.3.6.1.5.5.7.3.2')
-        try {
-            $secure = ConvertTo-SecureString -String $Password -AsPlainText -Force
-            $tmp = Join-Path $script:Paths.Temp ('cert-' + [guid]::NewGuid().ToString('N') + '.pfx')
-            [void](Export-PfxCertificate -Cert $cert -FilePath $tmp -Password $secure -Force)
-            try { $pfx = [IO.File]::ReadAllBytes($tmp); return ,$pfx } finally { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
-        } finally {
-            Remove-Item -LiteralPath ('Cert:\CurrentUser\My\' + $cert.Thumbprint) -Force -ErrorAction SilentlyContinue
-        }
-    }
+            $pfx = $cert.Export([Security.Cryptography.X509Certificates.X509ContentType]::Pfx, $Password)
+            return ,$pfx
+        } finally { $cert.Dispose() }
+    } finally { $rsa.Dispose() }
 }
 
 function Get-IdentityPath { return (Join-Path $script:Paths.Identity 'identity.json') }

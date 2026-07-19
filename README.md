@@ -1,5 +1,7 @@
 # LAN Router Comms
 
+[![PowerShell checks](https://github.com/Jnapier2/lan-router-comms/actions/workflows/powershell-static.yml/badge.svg)](https://github.com/Jnapier2/lan-router-comms/actions/workflows/powershell-static.yml)
+
 LAN Router Comms is a foreground Windows utility for authenticated text and resumable file delivery between paired computers on the same trusted private LAN. It uses no cloud relay, port forwarding, remote shell, background service, scheduled task, or startup persistence.
 
 ## Engineering highlights
@@ -25,7 +27,7 @@ The receiver is visible and foreground-only. Guest Wi-Fi isolation, VLANs, VPN r
 Review the source and run the static checks:
 
 ```powershell
-powershell.exe -NoProfile -File .\tests\Test-PublicSafety.ps1
+powershell.exe -NoProfile -File .\tests\Test-SafetyContracts.ps1
 powershell.exe -NoProfile -File .\LAN_Router_Comms.ps1 -Mode StartupTest
 powershell.exe -NoProfile -File .\LAN_Router_Comms.ps1 -Mode Menu
 ```

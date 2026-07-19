@@ -16,4 +16,4 @@ jobs:
       - uses: actions/checkout@v6
       - name: Parse source and enforce security invariants
         shell: powershell
-        run: .\tests\Test-PublicSafety.ps1
+        run: .\tests\Test-SafetyContracts.ps1
