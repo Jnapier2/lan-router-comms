@@ -1,6 +1,6 @@
 # All Rights Reserved
 
-Copyright (c) 2026 Gateway Information Group LLC. All rights reserved.
+Copyright © 2026 Gateway Information Group LLC. All rights reserved.
 
 This source code and accompanying documentation are made publicly visible for technical evaluation. Permission is granted to download and execute an unmodified copy solely for personal, noncommercial evaluation. No permission is granted to modify, redistribute, sublicense, sell, deploy, or otherwise use this work, in whole or in part, without prior written authorization from the copyright holder.
 
