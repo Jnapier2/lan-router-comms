@@ -2,6 +2,8 @@
 
 [![PowerShell checks](https://github.com/Jnapier2/lan-router-comms/actions/workflows/powershell-static.yml/badge.svg)](https://github.com/Jnapier2/lan-router-comms/actions/workflows/powershell-static.yml)
 
+[Portfolio](https://jerry-napier-portfolio.netlify.app/) · [GitHub profile](https://github.com/Jnapier2)
+
 LAN Router Comms provides a direct, cloud-free path for authenticated text and resumable file exchange between two managed Windows computers on a trusted private network. It supports local continuity and data-control needs without adding a cloud relay, port forwarding, remote shell, background service, scheduled task, or startup persistence.
 
 Durable queues and hash receipts make delivery a state-reconciliation problem rather than a blind resend: after an interruption, peers can continue from authenticated, recorded progress and retain duplicate-safe completion evidence.
@@ -76,4 +78,6 @@ Individual transfers are capped at 10 GiB. The receiver also preserves the confi
 
 This transparent PowerShell implementation has not received an independent security audit or formal protocol review. DPAPI inherits the security of the signed-in Windows account. Certificate rotation is manual, and there is no NAT traversal, cloud relay, multi-user service, or non-Windows client.
 
-See [SECURITY.md](SECURITY.md) for operational guidance. Copyright (c) 2026 Gateway Information Group LLC; see [LICENSE.md](LICENSE.md).
+See [SECURITY.md](SECURITY.md) for operational guidance.
+
+Copyright © 2026 Gateway Information Group LLC. All rights reserved. See [LICENSE.md](LICENSE.md).
