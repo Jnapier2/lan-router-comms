@@ -12,6 +12,7 @@ VERSION_PATH = ROOT / "VERSION.txt"
 METADATA_PATH = ROOT / "PACKAGE_METADATA.json"
 MANIFEST_PATH = ROOT / "MANIFEST.json"
 BUILD_ID = "GLL-2.3.0-P2179-20260814"
+HASH_MODE = "sha256_text_utf8_lf_v1"
 MANAGED_FILES = (
     "GatewayLANLink.bat",
     "Verify-Release.ps1",
@@ -66,6 +67,11 @@ def patch_source_build_id() -> None:
     SOURCE.write_bytes((b"\xef\xbb\xbf" if had_bom else b"") + encoded)
 
 
+def canonical_text_bytes(path: Path) -> bytes:
+    text = path.read_bytes().decode("utf-8-sig")
+    return text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+
+
 def build_manifest() -> None:
     version = parse_version_contract()
     metadata = json.loads(METADATA_PATH.read_text(encoding="utf-8-sig"))
@@ -81,14 +87,15 @@ def build_manifest() -> None:
         path = ROOT / relative
         if not path.is_file():
             raise RuntimeError(f"Managed file is missing: {relative}")
-        data = path.read_bytes()
-        total_bytes += len(data)
+        canonical = canonical_text_bytes(path)
+        total_bytes += len(canonical)
         entries.append(
             OrderedDict(
                 (
                     ("path", relative),
-                    ("size", len(data)),
-                    ("sha256", hashlib.sha256(data).hexdigest()),
+                    ("hash_mode", HASH_MODE),
+                    ("size", len(canonical)),
+                    ("sha256", hashlib.sha256(canonical).hexdigest()),
                 )
             )
         )
@@ -103,7 +110,8 @@ def build_manifest() -> None:
             ("parameter_baseline", version["parameter_baseline"]),
             ("canonical_entrypoint", version["canonical_entrypoint"]),
             ("execution_namespace", version["execution_namespace"]),
-            ("manifest_scope", "runtime managed files; MANIFEST.json is the signed index and is not self-hashed"),
+            ("manifest_scope", "runtime managed UTF-8 text normalized to LF; MANIFEST.json is the index and is not self-hashed"),
+            ("hash_mode", HASH_MODE),
             ("managed_file_count", len(entries)),
             ("managed_bytes", total_bytes),
             ("files", entries),
