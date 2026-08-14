@@ -25,8 +25,9 @@ function Invoke-ReleaseVerifier {
 
 function Get-TreeFingerprint {
     param([Parameter(Mandatory=$true)][string]$Root)
+    $prefix = $Root.TrimEnd([char[]]@('\','/'))
     $lines = foreach ($file in @(Get-ChildItem -LiteralPath $Root -Recurse -File | Sort-Object FullName)) {
-        $relative = $file.FullName.Substring($Root.TrimEnd('\').Length).TrimStart('\').Replace('\','/')
+        $relative = $file.FullName.Substring($prefix.Length).TrimStart([char[]]@('\','/')).Replace('\','/')
         $hash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
         '{0}|{1}|{2}' -f $relative, $file.Length, $hash
     }
@@ -63,7 +64,8 @@ foreach ($line in ((Get-Content -LiteralPath $versionPath -Raw) -split "`r?`n"))
 $core = Get-Content -LiteralPath $corePath -Raw
 Assert-True ([string]$metadata.parameter_baseline -eq '2.17.9') 'PACKAGE_METADATA.json is not aligned to parameter baseline 2.17.9.'
 Assert-True ([bool]$metadata.runtime_identity_gate.required) 'PACKAGE_METADATA.json does not require the runtime identity gate.'
-Assert-True ($core -match ('\$script:BuildId\s*=\s*[\'\"]' + [regex]::Escape([string]$version.build_id) + '[\'\"]')) 'The source engine build ID does not match VERSION.txt.'
+$buildPattern = '\$script:BuildId\s*=\s*[''"]' + [regex]::Escape([string]$version.build_id) + '[''"]'
+Assert-True ($core -match $buildPattern) 'The source engine build ID does not match VERSION.txt.'
 
 $before = Get-TreeFingerprint -Root $repo
 Assert-True ((Invoke-ReleaseVerifier -Root $repo) -eq 0) 'The clean source package failed runtime identity verification.'
