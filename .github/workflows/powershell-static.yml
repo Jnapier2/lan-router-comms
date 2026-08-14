@@ -15,7 +15,7 @@ concurrency:
 jobs:
   safety:
     runs-on: windows-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -26,5 +26,21 @@ jobs:
       - name: Verify canonical launcher contract
         shell: powershell
         run: .\tests\Test-LauncherContract.ps1
+      - name: Verify runtime identity and tamper rejection
+        shell: powershell
+        run: .\tests\Test-RuntimeIdentityContract.ps1
+      - name: Launch from an unrelated working directory
+        shell: powershell
+        run: |
+          $caller = Join-Path $env:RUNNER_TEMP 'gateway-lan-link-foreign-cwd'
+          New-Item -ItemType Directory -Path $caller -Force | Out-Null
+          $command = '"{0}\GatewayLANLink.bat" -Mode StartupTest' -f $env:GITHUB_WORKSPACE
+          $process = Start-Process -FilePath 'cmd.exe' -ArgumentList @('/d','/c',$command) -WorkingDirectory $caller -NoNewWindow -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Gateway LAN Link startup smoke failed with exit code $($process.ExitCode)." }
+          foreach ($name in @('config','state','logs','temp','exports','diag','inbox')) {
+            if (Test-Path -LiteralPath (Join-Path $caller $name)) {
+              throw "Gateway LAN Link wrote $name under the caller working directory."
+            }
+          }
 
 # Copyright © 2026 Gateway Information Group LLC. All rights reserved.
