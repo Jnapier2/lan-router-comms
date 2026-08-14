@@ -28,10 +28,13 @@ The receiver is visible and foreground-only. Guest Wi-Fi isolation, VLANs, VPN r
 
 ## Quick start
 
+Double-click `GatewayLANLink.bat` for the canonical Windows menu. The BAT file is intentionally a thin, root-relative launcher; `LAN_Router_Comms.ps1` remains the single source of application behavior and accepts the direct modes below.
+
 Review the source and run the static checks:
 
 ```powershell
 powershell.exe -NoProfile -File .\tests\Test-SafetyContracts.ps1
+powershell.exe -NoProfile -File .\tests\Test-LauncherContract.ps1
 powershell.exe -NoProfile -File .\LAN_Router_Comms.ps1 -Mode StartupTest
 powershell.exe -NoProfile -File .\LAN_Router_Comms.ps1 -Mode Menu
 ```
