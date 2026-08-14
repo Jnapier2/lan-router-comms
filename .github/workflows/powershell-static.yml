@@ -23,5 +23,8 @@ jobs:
       - name: Parse source and enforce security invariants
         shell: powershell
         run: .\tests\Test-SafetyContracts.ps1
+      - name: Verify canonical launcher contract
+        shell: powershell
+        run: .\tests\Test-LauncherContract.ps1
 
 # Copyright © 2026 Gateway Information Group LLC. All rights reserved.
