@@ -165,8 +165,10 @@ try {
     $coreText = Read-RegularTextFile -Path (Join-Path $script:Root 'LAN_Router_Comms.ps1') -MaxBytes 1048576
     $escapedVersion = [regex]::Escape([string]$version['version'])
     $escapedBuild = [regex]::Escape([string]$version['build_id'])
-    Assert-Contract ($coreText -match ("\$script:Version\s*=\s*['\"]" + $escapedVersion + "['\"]")) 'Source engine version does not match the package contract.'
-    Assert-Contract ($coreText -match ("\$script:BuildId\s*=\s*['\"]" + $escapedBuild + "['\"]")) 'Source engine build ID does not match the package contract.'
+    $versionPattern = '\$script:Version\s*=\s*[''"]' + $escapedVersion + '[''"]'
+    $buildPattern = '\$script:BuildId\s*=\s*[''"]' + $escapedBuild + '[''"]'
+    Assert-Contract ($coreText -match $versionPattern) 'Source engine version does not match the package contract.'
+    Assert-Contract ($coreText -match $buildPattern) 'Source engine build ID does not match the package contract.'
 
     if (-not $Quiet) {
         [ordered]@{
