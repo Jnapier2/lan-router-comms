@@ -10,7 +10,7 @@
   "manifest_scope": "runtime managed UTF-8 text normalized to LF; MANIFEST.json is the index and is not self-hashed",
   "hash_mode": "sha256_text_utf8_lf_v1",
   "managed_file_count": 5,
-  "managed_bytes": 165758,
+  "managed_bytes": 166260,
   "files": [
     {
       "path": "GatewayLANLink.bat",
@@ -21,8 +21,8 @@
     {
       "path": "LAN_Router_Comms.ps1",
       "hash_mode": "sha256_text_utf8_lf_v1",
-      "size": 150670,
-      "sha256": "a9a3202e000e567af4b5a52d89a0e626730f27b3c3e4b9227629da31859b1348"
+      "size": 151172,
+      "sha256": "ade829b62be5523d84841f7976d04f40b8513b818c470ac3c5f5b21831abc841"
     },
     {
       "path": "PACKAGE_METADATA.json",

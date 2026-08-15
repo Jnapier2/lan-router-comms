@@ -62,6 +62,11 @@ foreach ($line in ((Get-Content -LiteralPath $versionPath -Raw) -split "`r?`n"))
     if ($separator -gt 0) { $version[$line.Substring(0,$separator).Trim()] = $line.Substring($separator + 1).Trim() }
 }
 $core = Get-Content -LiteralPath $corePath -Raw
+$engineGatePosition = $core.IndexOf('Verify-Release.ps1', [StringComparison]::OrdinalIgnoreCase)
+$engineFolderInitPosition = $core.IndexOf('function Initialize-AppFolders', [StringComparison]::OrdinalIgnoreCase)
+Assert-True ($engineGatePosition -ge 0) 'The PowerShell engine does not invoke the release verifier.'
+Assert-True ($engineFolderInitPosition -gt $engineGatePosition) 'The engine release gate must appear before runtime folder initialization.'
+Assert-True ($core -match '\$LASTEXITCODE\s+-ne\s+0') 'The PowerShell engine must stop after verifier failure.'
 Assert-True ([string]$metadata.parameter_baseline -eq '2.17.9') 'PACKAGE_METADATA.json is not aligned to parameter baseline 2.17.9.'
 Assert-True ([bool]$metadata.runtime_identity_gate.required) 'PACKAGE_METADATA.json does not require the runtime identity gate.'
 $buildPattern = '\$script:BuildId\s*=\s*[''"]' + [regex]::Escape([string]$version.build_id) + '[''"]'

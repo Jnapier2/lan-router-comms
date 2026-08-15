@@ -28,6 +28,14 @@ $script:MinimumTlsProtocolValue = 3072 # TLS 1.2; TLS 1.3 is 12288 when exposed 
 $script:Capabilities = @('text-v2','file-resume-v2','delivery-receipt-v2','os-tls-floor-v1','tcp-keepalive-v1','disk-admission-v1','retry-jitter-v1','session-quota-v1','startup-due-message-retry-v1')
 $script:ScriptPath = [IO.Path]::GetFullPath($MyInvocation.MyCommand.Path)
 $script:Root = [IO.Path]::GetFullPath((Split-Path -Parent $script:ScriptPath))
+$script:ReleaseVerifierPath = Join-Path $script:Root 'Verify-Release.ps1'
+if (-not (Test-Path -LiteralPath $script:ReleaseVerifierPath -PathType Leaf)) {
+    throw 'Gateway LAN Link release verifier is missing. Replace this folder with one complete checksum-verified package.'
+}
+& powershell.exe -NoLogo -NoProfile -File $script:ReleaseVerifierPath -Quiet
+if ($LASTEXITCODE -ne 0) {
+    throw 'Gateway LAN Link release identity or managed-file verification failed. Authenticated startup is blocked.'
+}
 $script:Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 $script:MaxFrameBytes = 2MB
 $script:MaxTransferBytes = 10GB
