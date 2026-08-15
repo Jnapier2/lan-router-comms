@@ -1,0 +1,47 @@
+{
+  "schema": "GatewayLANLink.manifest.v1",
+  "project": "Gateway LAN Link",
+  "package_id": "GatewayLANLink",
+  "version": "2.3.0",
+  "build_id": "GLL-2.3.0-P2179-20260814",
+  "parameter_baseline": "2.17.9",
+  "canonical_entrypoint": "GatewayLANLink.bat",
+  "execution_namespace": "GatewayLANLink",
+  "manifest_scope": "runtime managed UTF-8 text normalized to LF; MANIFEST.json is the index and is not self-hashed",
+  "hash_mode": "sha256_text_utf8_lf_v1",
+  "managed_file_count": 5,
+  "managed_bytes": 165758,
+  "files": [
+    {
+      "path": "GatewayLANLink.bat",
+      "hash_mode": "sha256_text_utf8_lf_v1",
+      "size": 1061,
+      "sha256": "95a78efadb971dbc850aa56bb3751e34ea17eea965b484426c2e17bc9d47d175"
+    },
+    {
+      "path": "LAN_Router_Comms.ps1",
+      "hash_mode": "sha256_text_utf8_lf_v1",
+      "size": 150670,
+      "sha256": "a9a3202e000e567af4b5a52d89a0e626730f27b3c3e4b9227629da31859b1348"
+    },
+    {
+      "path": "PACKAGE_METADATA.json",
+      "hash_mode": "sha256_text_utf8_lf_v1",
+      "size": 1941,
+      "sha256": "13f6a047e9f49489bf6b47bbbff3f040ed0d28b89a33f33fb24aa81ed056af79"
+    },
+    {
+      "path": "Verify-Release.ps1",
+      "hash_mode": "sha256_text_utf8_lf_v1",
+      "size": 11775,
+      "sha256": "c7e6b33e3521db89ecb5ee7ecd1d440adf7606b7124cebd90033702894f32ae2"
+    },
+    {
+      "path": "VERSION.txt",
+      "hash_mode": "sha256_text_utf8_lf_v1",
+      "size": 311,
+      "sha256": "1391c24d5c63ea84a41e15a9b6c064a781d87ea36e41517b5a35391d4e3f920b"
+    }
+  ],
+  "rights_notice": "Copyright © 2026 Gateway Information Group LLC. All rights reserved."
+}

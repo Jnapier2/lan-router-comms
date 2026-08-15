@@ -21,6 +21,7 @@ Add-Type -AssemblyName System.Security -ErrorAction Stop
 
 $script:AppName = 'LAN Router Comms'
 $script:Version = '2.3.0'
+$script:BuildId = 'GLL-2.3.0-P2179-20260814'
 $script:ProtocolVersion = 2
 $script:TlsProtocols = [Security.Authentication.SslProtocols]::None
 $script:MinimumTlsProtocolValue = 3072 # TLS 1.2; TLS 1.3 is 12288 when exposed by the runtime
