@@ -34,9 +34,14 @@ jobs:
         run: |
           $caller = Join-Path $env:RUNNER_TEMP 'gateway-lan-link-foreign-cwd'
           New-Item -ItemType Directory -Path $caller -Force | Out-Null
-          $command = '"{0}\GatewayLANLink.bat" -Mode StartupTest' -f $env:GITHUB_WORKSPACE
-          $process = Start-Process -FilePath 'cmd.exe' -ArgumentList @('/d','/c',$command) -WorkingDirectory $caller -NoNewWindow -Wait -PassThru
-          if ($process.ExitCode -ne 0) { throw "Gateway LAN Link startup smoke failed with exit code $($process.ExitCode)." }
+          Push-Location $caller
+          try {
+            & "$env:GITHUB_WORKSPACE\GatewayLANLink.bat" -Mode StartupTest
+            $launchExit = $LASTEXITCODE
+          } finally {
+            Pop-Location
+          }
+          if ($launchExit -ne 0) { throw "Gateway LAN Link startup smoke failed with exit code $launchExit." }
           foreach ($name in @('config','state','logs','temp','exports','diag','inbox')) {
             if (Test-Path -LiteralPath (Join-Path $caller $name)) {
               throw "Gateway LAN Link wrote $name under the caller working directory."
