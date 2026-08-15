@@ -90,7 +90,7 @@ try {
     Copy-RuntimePackage -Destination $duplicateRoot
     $duplicateManifest = Get-Content -LiteralPath (Join-Path $duplicateRoot 'MANIFEST.json') -Raw | ConvertFrom-Json
     $first = $duplicateManifest.files[0]
-    $duplicateEntry = [pscustomobject]@{ path = [string]$first.path; size = [int64]$first.size; sha256 = [string]$first.sha256 }
+    $duplicateEntry = [pscustomobject]@{ path = [string]$first.path; hash_mode = [string]$first.hash_mode; size = [int64]$first.size; sha256 = [string]$first.sha256 }
     $duplicateManifest.files = @($duplicateManifest.files) + @($duplicateEntry)
     $duplicateManifest | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $duplicateRoot 'MANIFEST.json') -Encoding UTF8
     Assert-True ((Invoke-ReleaseVerifier -Root $duplicateRoot) -ne 0) 'The verifier accepted a duplicate manifest path.'
@@ -99,3 +99,5 @@ try {
 }
 
 Write-Host 'PASS: Gateway LAN Link runtime identity gate accepts the exact package, writes nothing, and rejects tamper/path conflicts.' -ForegroundColor Green
+$global:LASTEXITCODE = 0
+exit 0
