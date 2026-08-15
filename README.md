@@ -17,6 +17,7 @@ Durable queues and hash receipts make delivery a state-reconciliation problem ra
 - Durable queues, duplicate-safe delivery, resumable file transfer, free-space admission, and SHA-256 receipts.
 - Bounded timeouts, session quotas, TCP keepalive, and jittered backoff.
 - Explicit, narrowly scoped Windows Firewall setup with a matching rollback.
+- A read-only runtime identity and managed-file gate before identity access, pairing, authenticated transport, or optional firewall actions.
 
 ## Requirements and scope
 
@@ -30,29 +31,48 @@ The receiver is visible and foreground-only. Guest Wi-Fi isolation, VLANs, VPN r
 
 Double-click `GatewayLANLink.bat` for the canonical Windows menu. The BAT file is intentionally a thin, root-relative launcher; `LAN_Router_Comms.ps1` remains the single source of application behavior and accepts the direct modes below.
 
-Review the source and run the static checks:
+Both the BAT and the PowerShell engine invoke `Verify-Release.ps1` before runtime initialization. Direct PowerShell execution therefore cannot bypass release identity or managed-file verification.
+
+Review the source and run the checks:
 
 ```powershell
+powershell.exe -NoProfile -File .\Verify-Release.ps1
 powershell.exe -NoProfile -File .\tests\Test-SafetyContracts.ps1
 powershell.exe -NoProfile -File .\tests\Test-LauncherContract.ps1
-powershell.exe -NoProfile -File .\LAN_Router_Comms.ps1 -Mode StartupTest
-powershell.exe -NoProfile -File .\LAN_Router_Comms.ps1 -Mode Menu
+powershell.exe -NoProfile -File .\tests\Test-RuntimeIdentityContract.ps1
+.\GatewayLANLink.bat -Mode StartupTest
+.\GatewayLANLink.bat -Mode Menu
 ```
 
 The repository does not bypass local execution-policy controls.
 
 To pair two computers, create a one-time invitation on computer A, keep its visible receiver open, move the `.llinvite` file to computer B through a trusted channel, and compare the displayed verification code out of band before typing `PAIR`. An invitation is a bearer secret until used or expired.
 
+## Release identity and managed-file integrity
+
+The v2.17.9-aligned source package uses four cooperating contracts:
+
+- `VERSION.txt` — package ID, source version, build ID, parameter baseline, canonical entrypoint, and execution namespace;
+- `PACKAGE_METADATA.json` — authenticated-activity boundary, project-local roots, security boundary, and repair policy;
+- `MANIFEST.json` — deterministic canonical-text size and SHA-256 records for every runtime-managed file;
+- `Verify-Release.ps1` — read-only identity and managed-file verification.
+
+Verification fails closed when files are absent, mixed between builds, linked/reparse points, outside the project root, duplicated in the manifest, the wrong size, or hash-mismatched. It also confirms that the package, metadata, manifest, source version, and build ID agree.
+
+On failure, authenticated startup is blocked. Replace the folder with one complete checksum-verified package; do not copy individual runtime files between builds. The verifier never repairs or rewrites managed files while deciding whether they are trusted.
+
+The current manifest hashes UTF-8 text after normalizing line endings to LF, preventing Git checkout line-ending conversion from creating a false integrity failure while still detecting content changes.
+
 ## Optional firewall rule
 
-Normal startup, pairing, sending, receiving, health checks, and diagnostics do not change firewall state. The firewall helper acts only after an explicit user choice and requests UAC when needed.
+Normal startup, pairing, sending, receiving, health checks, and diagnostics do not change firewall state. The firewall helper acts only after an explicit user choice, a passing release-integrity gate, and UAC when needed.
 
 ```powershell
 # Add or repair the narrow rule
-powershell.exe -NoProfile -File .\LAN_Router_Comms.ps1 -Mode FirewallAdd -Port 57222
+.\GatewayLANLink.bat -Mode FirewallAdd -Port 57222
 
 # Roll it back, including recognized legacy rules for that port
-powershell.exe -NoProfile -File .\LAN_Router_Comms.ps1 -Mode FirewallRemove -Port 57222
+.\GatewayLANLink.bat -Mode FirewallRemove -Port 57222
 ```
 
 The add action allows one inbound TCP port on `Private` profiles from `LocalSubnet`, limited to Windows PowerShell. Before replacing any current or recognized legacy rule, it captures the existing rule properties. If creation or exact-scope verification fails, it removes partial state and restores the prior matching rules. TLS pinning and HMAC remain the application authorization boundary. The program never disables Windows Firewall or changes endpoint-security settings.
@@ -62,7 +82,7 @@ The add action allows one inbound TCP port on `Private` profiles from `LocalSubn
 Create a bounded, read-only diagnostic archive with:
 
 ```powershell
-powershell.exe -NoProfile -File .\LAN_Router_Comms.ps1 -Mode SupportExport
+.\GatewayLANLink.bat -Mode SupportExport
 ```
 
 The archive excludes message and file contents, pairing secrets, and raw identity material, and labels generated metadata `support-redacted`. Redaction is a safeguard, not a guarantee; review every file before sharing the archive.
@@ -71,11 +91,24 @@ The archive excludes message and file contents, pairing secrets, and raw identit
 
 On first use, the program creates local configuration and state. Real settings, identities, peers, invitations, messages, files, logs, diagnostics, and exports are ignored by Git. `config/settings.example.json` contains only non-secret defaults.
 
+The project-local runtime roots are `config`, `state`, `logs`, `temp`, `exports`, `diag`, and `inbox`. The launcher and engine derive these paths from their own source location rather than the caller's working directory.
+
 That versioned settings contract centralizes the port, message and file limits, timeouts, session quotas, retry behavior, retention windows, and free-space reserve.
 
 Received files are authenticated and hash-verified in transit but remain ordinary files after delivery. Scan them before opening.
 
 Individual transfers are capped at 10 GiB. The receiver also preserves the configured free-space reserve before accepting incoming data.
+
+## Validation
+
+Windows CI verifies:
+
+- PowerShell parsing and the established TLS, HMAC, DPAPI, certificate, firewall, cleanup, and transfer-limit invariants;
+- the one canonical root launcher;
+- clean-package identity success with no source-tree writes;
+- rejection of source tamper, escaping manifest paths, and duplicate manifest entries;
+- both canonical-BAT and direct-engine startup from unrelated working directories;
+- no runtime folder creation beneath the caller working directory.
 
 ## Limits
 
