@@ -12,6 +12,9 @@ param(
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
 
+$script:HashMode = 'sha256_text_utf8_lf_v1'
+$script:StrictUtf8 = New-Object System.Text.UTF8Encoding($false, $true)
+$script:Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 $script:Root = [IO.Path]::GetFullPath((Split-Path -Parent $MyInvocation.MyCommand.Path))
 $script:VersionPath = Join-Path $script:Root 'VERSION.txt'
 $script:MetadataPath = Join-Path $script:Root 'PACKAGE_METADATA.json'
@@ -43,7 +46,7 @@ function Read-RegularTextFile {
     Assert-Contract (-not $item.PSIsContainer) ("Expected a regular file: $Path")
     Assert-Contract (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) ("Linked or reparse-point files are not accepted: $Path")
     Assert-Contract ($item.Length -le $MaxBytes) ("File exceeds the verification byte limit: $Path")
-    return [IO.File]::ReadAllText($item.FullName, [Text.Encoding]::UTF8)
+    return [IO.File]::ReadAllText($item.FullName, $script:StrictUtf8)
 }
 
 function Read-BoundedJson {
@@ -51,6 +54,14 @@ function Read-BoundedJson {
     $text = Read-RegularTextFile -Path $Path -MaxBytes 1048576
     Assert-Contract (-not [string]::IsNullOrWhiteSpace($text)) ("JSON file is empty: $Path")
     return ($text | ConvertFrom-Json)
+}
+
+function Get-CanonicalManagedBytes {
+    param([Parameter(Mandatory=$true)][string]$Path)
+    $text = Read-RegularTextFile -Path $Path -MaxBytes 4194304
+    $normalized = $text.Replace("`r`n", "`n").Replace("`r", "`n")
+    $bytes = $script:Utf8NoBom.GetBytes($normalized)
+    return ,$bytes
 }
 
 function Read-VersionContract {
@@ -116,7 +127,9 @@ try {
     $manifestVersion = [string](Get-RequiredProperty -Object $manifest -Name 'version')
     $manifestBuild = [string](Get-RequiredProperty -Object $manifest -Name 'build_id')
     $manifestBaseline = [string](Get-RequiredProperty -Object $manifest -Name 'parameter_baseline')
+    $manifestHashMode = [string](Get-RequiredProperty -Object $manifest -Name 'hash_mode')
     $entries = @(Get-RequiredProperty -Object $manifest -Name 'files')
+    Assert-Contract ([string]::Equals($manifestHashMode, $script:HashMode, [StringComparison]::Ordinal)) 'MANIFEST.json uses an unsupported hash mode.'
 
     foreach ($comparison in @(
         @('package_id', [string]$version['package_id'], $metadataPackage, $manifestPackage),
@@ -137,8 +150,10 @@ try {
     [int64]$totalBytes = 0
     foreach ($entry in $entries) {
         $relative = [string](Get-RequiredProperty -Object $entry -Name 'path')
+        $entryHashMode = [string](Get-RequiredProperty -Object $entry -Name 'hash_mode')
         $expectedHash = ([string](Get-RequiredProperty -Object $entry -Name 'sha256')).Trim().ToLowerInvariant()
         [int64]$expectedSize = [int64](Get-RequiredProperty -Object $entry -Name 'size')
+        Assert-Contract ([string]::Equals($entryHashMode, $script:HashMode, [StringComparison]::Ordinal)) ("Manifest entry uses an unsupported hash mode: $relative")
         Assert-Contract ($expectedHash -match '^[0-9a-f]{64}$') ("Manifest SHA-256 is invalid: $relative")
         Assert-Contract ($expectedSize -ge 0) ("Manifest size is invalid: $relative")
 
@@ -147,15 +162,14 @@ try {
         Assert-Contract (-not $seen.ContainsKey($marker)) ("Manifest contains a duplicate path: $($resolved.Relative)")
         $seen[$marker] = $true
 
-        Assert-Contract (Test-Path -LiteralPath $resolved.Full -PathType Leaf) ("Managed file is missing: $($resolved.Relative)")
-        $item = Get-Item -LiteralPath $resolved.Full -Force
-        Assert-Contract (-not $item.PSIsContainer) ("Managed path is not a regular file: $($resolved.Relative)")
-        Assert-Contract (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) ("Managed file is linked or a reparse point: $($resolved.Relative)")
-        Assert-Contract ([int64]$item.Length -eq $expectedSize) ("Managed file size mismatch: $($resolved.Relative)")
-        $actualHash = (Get-FileHash -LiteralPath $item.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+        $canonicalBytes = Get-CanonicalManagedBytes -Path $resolved.Full
+        Assert-Contract ([int64]$canonicalBytes.Length -eq $expectedSize) ("Managed canonical size mismatch: $($resolved.Relative)")
+        $sha = [Security.Cryptography.SHA256]::Create()
+        try { $hashBytes = $sha.ComputeHash([byte[]]$canonicalBytes) } finally { $sha.Dispose() }
+        $actualHash = (($hashBytes | ForEach-Object { $_.ToString('x2') }) -join '')
         Assert-Contract ([string]::Equals($actualHash, $expectedHash, [StringComparison]::Ordinal)) ("Managed file SHA-256 mismatch: $($resolved.Relative)")
         $verified++
-        $totalBytes += [int64]$item.Length
+        $totalBytes += [int64]$canonicalBytes.Length
     }
 
     foreach ($requiredFile in $script:RequiredManagedFiles) {
@@ -177,6 +191,7 @@ try {
             version = [string]$version['version']
             build_id = [string]$version['build_id']
             parameter_baseline = [string]$version['parameter_baseline']
+            hash_mode = $script:HashMode
             files_verified = $verified
             managed_bytes = $totalBytes
             root = $script:Root
