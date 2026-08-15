@@ -1,0 +1,92 @@
+name: Finalize v2.17.9 engine identity gate
+
+on:
+  push:
+    branches:
+      - agent/v2179-runtime-identity-20260814
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gateway-lan-link-v2179-engine-gate
+  cancel-in-progress: false
+
+jobs:
+  finalize-and-verify:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact branch head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Add the engine-level gate and regenerate the manifest
+        shell: powershell
+        run: python .\scripts\apply_v2179_engine_gate.py
+
+      - name: Remove one-use patch machinery
+        shell: powershell
+        run: |
+          Remove-Item -LiteralPath .\scripts\apply_v2179_engine_gate.py -Force
+          Remove-Item -LiteralPath .\.github\workflows\finalize-v2179-engine-gate.yml -Force
+          if ((Get-ChildItem -LiteralPath .\scripts -Force -ErrorAction SilentlyContinue | Measure-Object).Count -eq 0) {
+            Remove-Item -LiteralPath .\scripts -Force
+          }
+
+      - name: Parse source and enforce security invariants
+        shell: powershell
+        run: .\tests\Test-SafetyContracts.ps1
+
+      - name: Verify canonical launcher contract
+        shell: powershell
+        run: .\tests\Test-LauncherContract.ps1
+
+      - name: Verify runtime identity and tamper rejection
+        shell: powershell
+        run: .\tests\Test-RuntimeIdentityContract.ps1
+
+      - name: Verify direct engine and canonical launcher from unrelated working directories
+        shell: powershell
+        run: |
+          foreach ($mode in @('launcher','engine')) {
+            $caller = Join-Path $env:RUNNER_TEMP ("gateway-lan-link-" + $mode + '-cwd')
+            New-Item -ItemType Directory -Path $caller -Force | Out-Null
+            Push-Location $caller
+            try {
+              if ($mode -eq 'launcher') {
+                & "$env:GITHUB_WORKSPACE\GatewayLANLink.bat" -Mode StartupTest
+              } else {
+                & powershell.exe -NoLogo -NoProfile -File "$env:GITHUB_WORKSPACE\LAN_Router_Comms.ps1" -Mode StartupTest
+              }
+              $launchExit = $LASTEXITCODE
+            } finally {
+              Pop-Location
+            }
+            if ($launchExit -ne 0) { throw "Gateway LAN Link $mode smoke failed with exit code $launchExit." }
+            foreach ($name in @('config','state','logs','temp','exports','diag','inbox')) {
+              if (Test-Path -LiteralPath (Join-Path $caller $name)) {
+                throw "Gateway LAN Link $mode smoke wrote $name under the caller working directory."
+              }
+            }
+          }
+
+      - name: Commit verified final source
+        shell: powershell
+        run: |
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          if (git diff --cached --quiet) { throw "The engine-gate workflow produced no source changes." }
+          git commit -m "Enforce Gateway LAN Link identity in the engine"
+          git push origin HEAD:agent/v2179-runtime-identity-20260814
+
+# Copyright © 2026 Gateway Information Group LLC. All rights reserved.
