@@ -1,10 +1,12 @@
-# LAN Router Comms
+# Gateway LAN Link
 
 [![PowerShell checks](https://github.com/Jnapier2/lan-router-comms/actions/workflows/powershell-static.yml/badge.svg)](https://github.com/Jnapier2/lan-router-comms/actions/workflows/powershell-static.yml)
 
 [Portfolio](https://jerry-napier-portfolio.netlify.app/) · [GitHub profile](https://github.com/Jnapier2)
 
-LAN Router Comms provides a direct, cloud-free path for authenticated text and resumable file exchange between two managed Windows computers on a trusted private network. It supports local continuity and data-control needs without adding a cloud relay, port forwarding, remote shell, background service, scheduled task, or startup persistence.
+Repository slug and historical alias: **LAN Router Comms** (`lan-router-comms`).
+
+Gateway LAN Link provides a direct, cloud-free path for authenticated text and resumable file exchange between two managed Windows computers on a trusted private network. It supports local continuity and data-control needs without adding a cloud relay, port forwarding, remote shell, background service, scheduled task, or startup persistence.
 
 Durable queues and hash receipts make delivery a state-reconciliation problem rather than a blind resend: after an interruption, peers can continue from authenticated, recorded progress and retain duplicate-safe completion evidence.
 
