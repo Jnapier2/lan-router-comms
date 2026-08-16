@@ -79,7 +79,7 @@ function Read-VersionContract {
         Assert-Contract (-not $result.ContainsKey($key)) ("VERSION.txt contains a duplicate key: $key")
         $result[$key] = $value
     }
-    foreach ($required in @('package_id','version','build_id','parameter_baseline','canonical_entrypoint','execution_namespace')) {
+    foreach ($required in @('package_id','version','build_id','release_framework_version','canonical_entrypoint','execution_namespace')) {
         Assert-Contract ($result.ContainsKey($required)) ("VERSION.txt is missing required key: $required")
         Assert-Contract (-not [string]::IsNullOrWhiteSpace([string]$result[$required])) ("VERSION.txt value is empty: $required")
     }
@@ -117,7 +117,7 @@ try {
     $metadataPackage = [string](Get-RequiredProperty -Object $metadata -Name 'package_id')
     $metadataVersion = [string](Get-RequiredProperty -Object $metadata -Name 'version')
     $metadataBuild = [string](Get-RequiredProperty -Object $metadata -Name 'build_id')
-    $metadataBaseline = [string](Get-RequiredProperty -Object $metadata -Name 'parameter_baseline')
+    $metadataBaseline = [string](Get-RequiredProperty -Object $metadata -Name 'release_framework_version')
     $metadataEntrypoint = [string](Get-RequiredProperty -Object $metadata -Name 'canonical_entrypoint')
     $metadataNamespace = [string](Get-RequiredProperty -Object $metadata -Name 'execution_namespace')
     $identityGate = Get-RequiredProperty -Object $metadata -Name 'runtime_identity_gate'
@@ -126,7 +126,7 @@ try {
     $manifestPackage = [string](Get-RequiredProperty -Object $manifest -Name 'package_id')
     $manifestVersion = [string](Get-RequiredProperty -Object $manifest -Name 'version')
     $manifestBuild = [string](Get-RequiredProperty -Object $manifest -Name 'build_id')
-    $manifestBaseline = [string](Get-RequiredProperty -Object $manifest -Name 'parameter_baseline')
+    $manifestBaseline = [string](Get-RequiredProperty -Object $manifest -Name 'release_framework_version')
     $manifestHashMode = [string](Get-RequiredProperty -Object $manifest -Name 'hash_mode')
     $entries = @(Get-RequiredProperty -Object $manifest -Name 'files')
     Assert-Contract ([string]::Equals($manifestHashMode, $script:HashMode, [StringComparison]::Ordinal)) 'MANIFEST.json uses an unsupported hash mode.'
@@ -135,7 +135,7 @@ try {
         @('package_id', [string]$version['package_id'], $metadataPackage, $manifestPackage),
         @('version', [string]$version['version'], $metadataVersion, $manifestVersion),
         @('build_id', [string]$version['build_id'], $metadataBuild, $manifestBuild),
-        @('parameter_baseline', [string]$version['parameter_baseline'], $metadataBaseline, $manifestBaseline)
+        @('release_framework_version', [string]$version['release_framework_version'], $metadataBaseline, $manifestBaseline)
     )) {
         $name = [string]$comparison[0]
         Assert-Contract ([string]::Equals([string]$comparison[1], [string]$comparison[2], [StringComparison]::Ordinal)) ("VERSION.txt and PACKAGE_METADATA.json disagree on $name")
@@ -190,7 +190,7 @@ try {
             package_id = [string]$version['package_id']
             version = [string]$version['version']
             build_id = [string]$version['build_id']
-            parameter_baseline = [string]$version['parameter_baseline']
+            release_framework_version = [string]$version['release_framework_version']
             hash_mode = $script:HashMode
             files_verified = $verified
             managed_bytes = $totalBytes
