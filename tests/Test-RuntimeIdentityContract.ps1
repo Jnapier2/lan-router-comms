@@ -4,6 +4,11 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
+
+# Keep isolated child checks in the PowerShell host running this suite.
+$testShellName = if ($PSVersionTable.PSEdition -eq 'Core') { 'pwsh.exe' } else { 'powershell.exe' }
+$testShell = Join-Path $PSHOME $testShellName
+if (-not (Test-Path -LiteralPath $testShell -PathType Leaf)) { throw 'Current PowerShell host executable was not found.' }
 $verifyPath = Join-Path $repo 'Verify-Release.ps1'
 $launcherPath = Join-Path $repo 'GatewayLANLink.bat'
 $manifestPath = Join-Path $repo 'MANIFEST.json'
@@ -19,7 +24,7 @@ function Assert-True {
 function Invoke-ReleaseVerifier {
     param([Parameter(Mandatory=$true)][string]$Root)
     $path = Join-Path $Root 'Verify-Release.ps1'
-    & powershell.exe -NoLogo -NoProfile -File $path -Quiet *> $null
+    & $testShell -NoLogo -NoProfile -File $path -Quiet *> $null
     return [int]$LASTEXITCODE
 }
 
